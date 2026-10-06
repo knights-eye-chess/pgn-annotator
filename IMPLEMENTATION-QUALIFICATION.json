@@ -1,0 +1,51 @@
+{
+  "schema": "phase4-annotator-implementation-qualification/1",
+  "agent": "phase4_annotator",
+  "startedAt": "2026-10-04T21:13:48Z",
+  "endedAt": "2026-10-04T21:19:30Z",
+  "followupIntervals": [
+    {
+      "startedAt": "2026-10-04T21:21:07Z",
+      "endedAt": "2026-10-04T21:21:27Z",
+      "scope": "Claude entry003: record JSON roundtrip and unsupported-schema/invalid-shape tests; no runtime changes"
+    },
+    {
+      "startedAt": "2026-10-04T21:50:41Z",
+      "endedAt": "2026-10-04T21:52:29Z",
+      "scope": "Claude review005: same-root lossCp export, policyQualityLoss naming, preview phase.4.1, four regression tests; native policy unchanged",
+      "externalTestResult": { "passed": 18, "failed": 0 }
+    }
+  ],
+  "scope": "tools/pgn-annotator only; no commit, push, deployment or engine download",
+  "runtime": "Node 24.19.0",
+  "externalConsumer": "/workspace/scratch/phase4-annotator-agent",
+  "coreArtifact": {
+    "version": "0.0.0-phase.3",
+    "sha256": "d2169f4b8c6133feb0826d8a8000d558a38b59447ec2e2710f77a2d1945f386e",
+    "installation": "Separate external npm installation from supplied tarball, with chess.js 1.4.0; no application node_modules link"
+  },
+  "verification": {
+    "command": "npm test",
+    "passed": 18,
+    "failed": 0,
+    "covered": [
+      "native policy ordinary main-line replay and bounded display records",
+      "same-root played-best loss zero, nonbest candidate centipawn difference, missing candidate and mate score null, after-search independence",
+      "JSON record roundtrip and explicit displayOnly/non-evidence markers; unsupported schema and malformed same-schema rejection",
+      "custom SetUp FEN root and Black-to-move numbering",
+      "native sacrifice constrained root and default verification depth 10",
+      "terminal mate derived from rules without terminal engine search",
+      "explicit unavailable and already-aborted requests without labels",
+      "distinct histories and annotations for repeated positions",
+      "invalid PGN/root headers rejected",
+      "real subprocess fixture with actual handshake attribution",
+      "serial close before next spawn and shell:false",
+      "in-search abort and queued cancellation",
+      "search/handshake timeouts, engine exit and missing executable cleanup",
+      "scheduler close drains active child and blocks future acquisition",
+      "CLI stdin/JSONL/repeated args and SIGINT descendant cleanup"
+    ],
+    "additional": ["Node syntax checks on all runtime modules", "CLI SIGTERM during stdin exits 143"],
+    "limits": "Engine fixture scores are synthetic. Integration owner separately qualifies the packed annotator and real host Stockfish; this record does not assert their result."
+  }
+}

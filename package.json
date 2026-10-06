@@ -1,0 +1,48 @@
+{
+  "name": "@knights-eye-chess/pgn-annotator",
+  "version": "0.1.0-dev.2",
+  "private": true,
+  "type": "module",
+  "description": "Private independent main-line PGN consumer of the analysis-core preview",
+  "bin": {
+    "knights-eye-annotate": "src/cli.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/annotate.d.mts",
+      "import": "./src/annotate.mjs"
+    },
+    "./engine": {
+      "types": "./src/process-engine.d.mts",
+      "import": "./src/process-engine.mjs"
+    }
+  },
+  "files": [
+    "src",
+    "tests",
+    "README.md",
+    "vendor",
+    "build.mjs",
+    "scripts",
+    "SOURCE-ORIGIN.json"
+  ],
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "npm run build && npm test",
+    "pack:checked": "npm run check && node scripts/pack.mjs",
+    "build": "node build.mjs",
+    "pack:artifact": "node scripts/pack.mjs"
+  },
+  "dependencies": {
+    "@knights-eye-chess/move-classifier": "file:vendor/npm/knights-eye-chess-move-classifier-0.1.0-dev.2.tgz",
+    "chess.js": "1.4.0",
+    "@types/node": "22.19.19"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/knights-eye-chess/pgn-annotator.git"
+  }
+}
