@@ -1,6 +1,6 @@
 # Independent PGN annotator preview
 
-Private standalone consumer, `0.1.0-dev.5`. It imports only installed named exports
+Private standalone consumer, `0.1.0-dev.6`. It imports only installed named exports
 from `@knights-eye-chess/move-classifier@0.1.0-dev.2`, declares chess.js 1.4.0 directly,
 and owns its process transport. No application source, website routes, tree,
 widget, dataset, accounts, storage, opening database, engine binary or AI is used.
@@ -41,7 +41,7 @@ npm run pack:checked
 npm init -y
 npm install --ignore-scripts --no-audit --no-fund \
   /absolute/artifacts/knights-eye-chess-move-classifier-0.1.0-dev.2.tgz \
-  /absolute/artifacts/knights-eye-chess-pgn-annotator-0.1.0-dev.5.tgz
+  /absolute/artifacts/knights-eye-chess-pgn-annotator-0.1.0-dev.6.tgz
 node --test node_modules/@knights-eye-chess/pgn-annotator/tests/*.test.mjs
 ```
 
@@ -91,6 +91,21 @@ reports process initialization, search and total elapsed milliseconds, warm reus
 actual options, bounded compiler output, binary variant when the host dispatches
 it, and observed nodes/nps. Candidate node counts come from the matching PV update;
 MultiPV node totals describe the search and must not be summed across lines.
+
+Optional CPU diagnostics add a bounded `cpuModel` (128 characters),
+`loadAverageBefore`/`loadAverageAfter` (1, 5 and 15 minute host-wide averages),
+`cpuQuota` (`quotaUs` and `periodUs`; a null quota means explicitly unlimited),
+and `cpuStatBefore`/`cpuStatAfter`/`cpuStatDelta`. The stat objects whitelist
+`usageUs`, `userUs`, `systemUs`, `nrPeriods`, `nrThrottled` and `throttledUs` from
+Linux cgroup-v2 `cpu.stat`; unknown fields are omitted. Readings bracket `go`
+through completed search, excluding process initialization and the final readiness
+fence. Deltas are null when either observation is unavailable or a counter resets;
+missing optional user/system counters remain null. Load averages are host-wide,
+and cgroup CPU/throttle counters cover every process in the container, so neither
+is isolated Stockfish utilization or proof of host contention. Fixed controller
+files may be unavailable on other hosts; all searches still work and diagnostics
+stay null. No filesystem paths, hostname, environment values or read errors are
+included in results.
 
 Exit status is 0 when every occurrence completes, 2 when any is unavailable,
 1 for malformed input/arguments or unexpected errors, and 130/143 for SIGINT/
@@ -165,7 +180,7 @@ npm run pack:checked
 ```
 
 The source snapshot is recorded in `SOURCE-ORIGIN.json`. This private preview
-uses version `0.1.0-dev.5`; earlier `0.1.0-dev.1` artifacts remain immutable.
+uses version `0.1.0-dev.6`; earlier artifacts remain immutable.
 Internal dependencies are pinned archives in `vendor/npm`. Update an existing
 dependency with `node scripts/update-dependency.mjs @knights-eye-chess/name
 /absolute/path/package.tgz`, then run `npm ci` and `npm run check`. Review the

@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { performance } from 'node:perf_hooks';
 import { createStockfishAdapter } from '@knights-eye-chess/move-classifier/engine/stockfish';
+import { readCpuSnapshot, cpuStatDelta } from './cpu-diagnostics.mjs';
 
 const abortError = () => new Error('Analysis cancelled.');
 const elapsed = start => Math.round((performance.now() - start) * 1000) / 1000;
@@ -128,7 +129,7 @@ export function createProcessEngine({ command = 'stockfish', args = [], timeoutM
     }
     if (!reused) session = createSession();
     const current = session;
-    let initializationMs = 0, searchStarted, nodes = null, nps = null;
+    let initializationMs = 0, searchStarted, cpuBefore, nodes = null, nps = null;
     const candidateNodes = new Map();
     const abort = () => current.stop();
     signal.addEventListener('abort', abort, { once: true });
@@ -156,12 +157,18 @@ export function createProcessEngine({ command = 'stockfish', args = [], timeoutM
           // The actual name/options handshake has already completed. The adapter
           // still follows its usual readiness protocol for every finite search.
           if (commandText === 'uci') queueMicrotask(() => { if (!current.terminating) onData('uciok'); });
-          else current.write(commandText);
-          if (commandText.startsWith('go ')) searchStarted = performance.now();
+          else {
+            if (commandText.startsWith('go ')) {
+              cpuBefore = readCpuSnapshot();
+              searchStarted = performance.now();
+            }
+            current.write(commandText);
+          }
         }, terminate() { /* Outer settlement owns process reuse or drain. */ } };
       }, timeoutMs, current.name);
       const result = await adapter.search({ ...request, signal });
       const searchElapsedMs = elapsed(searchStarted ?? started);
+      const cpuAfter = readCpuSnapshot();
       current.receiver = null;
       // A readiness round-trip fences late info/bestmove output from the next
       // lease, without clearing the warm transposition table.
@@ -174,7 +181,12 @@ export function createProcessEngine({ command = 'stockfish', args = [], timeoutM
       result.nodes = result.candidates[0]?.nodes ?? nodes;
       result.diagnostics = { schema: 'native-engine-search/1', processReused: reused,
         processInitializationMs: initializationMs, searchElapsedMs, totalElapsedMs: elapsed(started),
-        nodes, nps, threads, hashMb, compiler: current.compiler, binaryVariant: current.binaryVariant };
+        nodes, nps, threads, hashMb, compiler: current.compiler, binaryVariant: current.binaryVariant,
+        cpuModel: cpuBefore?.cpuModel ?? cpuAfter.cpuModel,
+        loadAverageBefore: cpuBefore?.loadAverage ?? null, loadAverageAfter: cpuAfter.loadAverage,
+        cpuQuota: cpuBefore?.cpuQuota ?? null,
+        cpuStatBefore: cpuBefore?.cpuStat ?? null, cpuStatAfter: cpuAfter.cpuStat,
+        cpuStatDelta: cpuStatDelta(cpuBefore?.cpuStat, cpuAfter.cpuStat) };
       try { onSearchDiagnostics?.(result.diagnostics); } catch { /* Observers do not own result settlement. */ }
       if (!reuseProcess) { current.stop(); await current.childClosed; session = null; }
       return result;

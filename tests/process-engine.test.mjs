@@ -135,6 +135,13 @@ test('PH4-04: optional warm host reuses one child, retains telemetry and rejects
     assert.equal(one.diagnostics.nps, 4567);
     assert.match(one.diagnostics.compiler, /SSE2/);
     assert(one.diagnostics.totalElapsedMs >= one.diagnostics.searchElapsedMs);
+    assert('cpuModel' in one.diagnostics);
+    assert('cpuStatDelta' in one.diagnostics);
+    if (one.diagnostics.cpuStatDelta) {
+      assert(one.diagnostics.cpuStatDelta.usageUs >= 0);
+      assert(one.diagnostics.cpuStatDelta.throttledUs >= 0);
+      assert(one.diagnostics.cpuStatDelta.nrThrottled >= 0);
+    }
   } finally { await host.close(); }
   assert(observedClose, 'close() must wait for the real child close event.');
   assert(children[0].exitCode !== null || children[0].signalCode !== null, 'Warm shutdown drains gracefully or through the bounded kill fallback.');
