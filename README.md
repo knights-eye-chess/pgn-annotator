@@ -1,6 +1,6 @@
 # Independent PGN annotator preview
 
-Private standalone consumer, `0.1.0-dev.2`. It imports only installed named exports
+Private standalone consumer, `0.1.0-dev.5`. It imports only installed named exports
 from `@knights-eye-chess/move-classifier@0.1.0-dev.2`, declares chess.js 1.4.0 directly,
 and owns its process transport. No application source, website routes, tree,
 widget, dataset, accounts, storage, opening database, engine binary or AI is used.
@@ -41,7 +41,7 @@ npm run pack:checked
 npm init -y
 npm install --ignore-scripts --no-audit --no-fund \
   /absolute/artifacts/knights-eye-chess-move-classifier-0.1.0-dev.2.tgz \
-  /absolute/artifacts/knights-eye-chess-pgn-annotator-0.1.0-dev.2.tgz
+  /absolute/artifacts/knights-eye-chess-pgn-annotator-0.1.0-dev.5.tgz
 node --test node_modules/@knights-eye-chess/pgn-annotator/tests/*.test.mjs
 ```
 
@@ -78,8 +78,19 @@ engine self-attribution, not cryptographic build identification.
 Each UCI handshake has a 5-second limit. Each finite search has a 65-second limit,
 configurable with `--timeout-ms`; the search depth is 1–128, default 12. The host
 requests stop and quit, waits for process close, and force-kills a child that does
-not exit within 250 ms. A dedicated process per search is intentionally simple
-and slower than warm engine reuse. No pool or public core scheduler API is added.
+not exit within 250 ms. A dedicated process per search remains the default. Programmatic hosts can set
+`reuseProcess: true` to retain one process across sequential searches within one
+job/container. That mode rejects overlapping calls immediately. Successful searches
+fence stdout through UCI readiness before reuse; failed, timed-out or cancelled
+searches stop/quit/kill and await process close before a new process can start.
+`close()` drains an idle warm process as well. No global pool is added.
+
+`threads` (default 1) and `hashMb` (default 16) are validated against advertised UCI
+spin options before use. Each result's optional `native-engine-search/1` diagnostics
+reports process initialization, search and total elapsed milliseconds, warm reuse,
+actual options, bounded compiler output, binary variant when the host dispatches
+it, and observed nodes/nps. Candidate node counts come from the matching PV update;
+MultiPV node totals describe the search and must not be summed across lines.
 
 Exit status is 0 when every occurrence completes, 2 when any is unavailable,
 1 for malformed input/arguments or unexpected errors, and 130/143 for SIGINT/
@@ -154,7 +165,7 @@ npm run pack:checked
 ```
 
 The source snapshot is recorded in `SOURCE-ORIGIN.json`. This private preview
-uses version `0.1.0-dev.2`; earlier `0.1.0-dev.1` artifacts remain immutable.
+uses version `0.1.0-dev.5`; earlier `0.1.0-dev.1` artifacts remain immutable.
 Internal dependencies are pinned archives in `vendor/npm`. Update an existing
 dependency with `node scripts/update-dependency.mjs @knights-eye-chess/name
 /absolute/path/package.tgz`, then run `npm ci` and `npm run check`. Review the

@@ -19,7 +19,7 @@ function engine(mode, options = {}) {
 }
 
 test('PH4-04: real child transport attributes handshake name and serializes complete close before next lease', async () => {
-  const { host, children } = engine('normal', { spawnProcess(command, args, options) {
+  const { host, children } = engine('normal', { shutdownGraceMs: 1000, spawnProcess(command, args, options) {
     assert(children.every(child => child.exitCode !== null || child.signalCode !== null), 'Prior lease must close before another spawn.');
     assert.equal(options.shell, false);
     return spawn(command, args, options);
@@ -48,7 +48,7 @@ test('PH4-04: abort during search force kills uncooperative child; queued cancel
   await assert.rejects(queued, /cancelled/);
   await host.close();
   assert.equal(children.length, 1);
-  assert(children[0].exitCode !== null || children[0].signalCode !== null);
+  assert.equal(children[0].signalCode, 'SIGKILL', 'Uncooperative child uses the bounded kill fallback.');
 });
 
 test('PH4-04: bounded search/handshake failure and missing executable drain all processes', async () => {
@@ -113,4 +113,85 @@ test('PH4-04/05: CLI SIGINT emits cancelled occurrences only after its engine ch
     if (enginePid) { try { process.kill(enginePid, 'SIGKILL'); } catch { /* Already reaped. */ } }
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('PH4-04: optional warm host reuses one child, retains telemetry and rejects overlapping leases', async () => {
+  let observedClose = false;
+  const { host, children } = engine('normal', { reuseProcess: true, threads: 4, hashMb: 128 });
+  try {
+    const first = host.search(request);
+    await assert.rejects(host.search(request), /capacity exhausted/);
+    const one = await first;
+    children[0].once('close', () => { observedClose = true; });
+    const two = await host.search({ ...request, multiPv: 1 });
+    assert.equal(children.length, 1);
+    assert.equal(children[0].exitCode, null);
+    assert.deepEqual([one.diagnostics.processReused, two.diagnostics.processReused], [false, true]);
+    assert.equal(two.diagnostics.processInitializationMs, 0);
+    assert.equal(one.diagnostics.threads, 4);
+    assert.equal(one.diagnostics.hashMb, 128);
+    assert.equal(one.diagnostics.nodes, 1366);
+    assert.equal(one.candidates[0].nodes, 1366);
+    assert.equal(one.diagnostics.nps, 4567);
+    assert.match(one.diagnostics.compiler, /SSE2/);
+    assert(one.diagnostics.totalElapsedMs >= one.diagnostics.searchElapsedMs);
+  } finally { await host.close(); }
+  assert(observedClose, 'close() must wait for the real child close event.');
+  assert(children[0].exitCode !== null || children[0].signalCode !== null, 'Warm shutdown drains gracefully or through the bounded kill fallback.');
+});
+
+test('PH4-04: warm cancellation drains a poisoned process before a later lease may acquire', async () => {
+  let notify;
+  const ready = new Promise(resolve => { notify = resolve; });
+  const children = [];
+  let first = true;
+  const host = createProcessEngine({ command: process.execPath, args: [fixture, 'normal'], reuseProcess: true,
+    timeoutMs: 1000, handshakeTimeoutMs: 1000, shutdownGraceMs: 20,
+    spawnProcess(command, args, options) {
+      assert(children.every(child => child.exitCode !== null || child.signalCode !== null));
+      const child = spawn(command, [fixture, first ? 'hang' : 'normal'], options); first = false;
+      children.push(child);
+      child.stdout.on('data', data => { if (String(data).includes('readyok')) notify(); });
+      return child;
+    } });
+  try {
+    const controller = new AbortController();
+    const active = host.search({ ...request, signal: controller.signal });
+    await ready;
+    controller.abort();
+    await assert.rejects(active, /cancelled/);
+    assert(children[0].exitCode !== null || children[0].signalCode !== null);
+    const recovered = await host.search(request);
+    assert.equal(recovered.diagnostics.processReused, false);
+    assert.equal(children.length, 2);
+  } finally { await host.close(); }
+});
+
+test('PH4-04: warm invalid searches drain rather than leaking state into the next lease', async () => {
+  const { host, children } = engine('normal', { reuseProcess: true });
+  try {
+    await assert.rejects(host.search({ ...request, depth: 0 }), /Invalid Stockfish/);
+    assert(children[0].exitCode !== null || children[0].signalCode !== null);
+    const next = await host.search(request);
+    assert.equal(next.diagnostics.processReused, false);
+    assert.equal(children.length, 2);
+  } finally { await host.close(); }
+});
+
+
+test('PH4-04: idle warm process failure drains before its replacement spawns', async () => {
+  const children = [];
+  const host = createProcessEngine({ command: process.execPath, args: [fixture, 'normal'], reuseProcess: true,
+    timeoutMs: 1000, handshakeTimeoutMs: 1000, shutdownGraceMs: 20,
+    spawnProcess(command, args, options) {
+      assert(children.every(child => child.exitCode !== null || child.signalCode !== null), 'Failed idle child must close before replacement spawn.');
+      const child = spawn(command, args, options); children.push(child); return child;
+    } });
+  try {
+    await host.search(request);
+    children[0].emit('error', new Error('Synthetic idle transport failure.'));
+    const recovered = await host.search(request);
+    assert.equal(recovered.diagnostics.processReused, false);
+    assert.equal(children.length, 2);
+  } finally { await host.close(); }
 });

@@ -1,101 +1,210 @@
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
+import { performance } from 'node:perf_hooks';
 import { createStockfishAdapter } from '@knights-eye-chess/move-classifier/engine/stockfish';
 
 const abortError = () => new Error('Analysis cancelled.');
+const elapsed = start => Math.round((performance.now() - start) * 1000) / 1000;
+const text = value => value.replace(/[\u0000-\u001f\u007f]/g, '').trim();
+const boundedInteger = (value, min, max) => Number.isSafeInteger(value) && value >= min && value <= max;
 
-/** A dedicated child per lease: its stdout can never enter a later search.
- * search() serializes settlement AND child close, including stop/quit/kill drain. */
+/** Dedicated children remain the default. Optional warm reuse belongs to one
+ * host/job; it rejects concurrent leases rather than creating a hidden queue.
+ * Errors/cancellation drain the child before another search can acquire it. */
 export function createProcessEngine({ command = 'stockfish', args = [], timeoutMs = 65000,
-  handshakeTimeoutMs = 5000, shutdownGraceMs = 250, spawnProcess = spawn, onSpawn } = {}) {
+  handshakeTimeoutMs = 5000, shutdownGraceMs = 250, spawnProcess = spawn, onSpawn,
+  reuseProcess = false, threads = 1, hashMb = 16, onSearchDiagnostics } = {}) {
   if (typeof command !== 'string' || !command || !Array.isArray(args) || args.some(arg => typeof arg !== 'string') ||
-    [timeoutMs, handshakeTimeoutMs, shutdownGraceMs].some(value => !Number.isSafeInteger(value) || value < 1 || value > 2147483647)) {
+    [timeoutMs, handshakeTimeoutMs, shutdownGraceMs].some(value => !boundedInteger(value, 1, 2147483647)) ||
+    typeof reuseProcess !== 'boolean' || !boundedInteger(threads, 1, 256) || !boundedInteger(hashMb, 1, 65536) ||
+    (onSearchDiagnostics !== undefined && typeof onSearchDiagnostics !== 'function')) {
     throw new TypeError('Invalid engine process configuration.');
   }
-  let queue = Promise.resolve(), closed = false;
+  let queue = Promise.resolve(), closed = false, busy = false, session = null;
   const shutdown = new AbortController();
 
-  async function search(request) {
-    const signal = request.signal ? AbortSignal.any([request.signal, shutdown.signal]) : shutdown.signal;
-    if (closed || signal.aborted) throw abortError();
+  function createSession() {
+    const started = performance.now();
     const child = spawnProcess(command, [...args], { shell: false, stdio: ['pipe', 'pipe', 'pipe'] });
-    let receiver, terminating = false, killTimer, name = '', hasMultiPv = false;
-    let resolveClose, resolveHandshake, rejectHandshake;
-    const childClosed = new Promise(resolve => { resolveClose = resolve; });
-    const handshake = new Promise((resolve, reject) => { resolveHandshake = resolve; rejectHandshake = reject; });
-    // Avoid an unhandled rejection if a child fails synchronously during setup.
-    handshake.catch(() => {});
     const input = createInterface({ input: child.stdout, crlfDelay: Infinity });
-    const stop = () => {
+    let resolveClose, waiter = null, receiver = null, terminating = false, killTimer;
+    let name = '', compiler = null, binaryVariant = null, collectCompiler = false, compilerLines = [];
+    const options = new Map();
+    const childClosed = new Promise(resolve => { resolveClose = resolve; });
+    function stop() {
       if (terminating) return;
       terminating = true;
+      waiter?.reject(abortError());
       try { child.stdin.end('stop\nquit\n'); } catch { /* Force kill still follows. */ }
       killTimer = setTimeout(() => { if (child.exitCode === null) child.kill('SIGKILL'); }, shutdownGraceMs);
-    };
-    const failure = error => {
-      rejectHandshake(error);
+    }
+    function failure(error) {
+      waiter?.reject(error);
       receiver?.('engineerror Engine process failed.');
       stop();
-    };
+    }
     child.once('error', failure);
     child.stdin.on('error', failure);
     child.stdout.on('error', failure);
-    // Drain stderr without exposing or retaining arbitrary engine diagnostics.
     child.stderr.resume();
     child.stderr.on('error', failure);
     child.once('close', () => {
       clearTimeout(killTimer);
       input.close();
-      rejectHandshake(new Error('Engine exited before UCI handshake.'));
+      waiter?.reject(new Error('Engine exited before completing command.'));
       if (!terminating) receiver?.('engineerror Engine exited before completing search.');
+      terminating = true;
       resolveClose();
     });
     input.on('line', line => {
       if (terminating) return;
-      if (line.startsWith('id name ')) name = line.slice(8).replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 200);
-      if (/^option name MultiPV type spin\b/.test(line)) hasMultiPv = true;
-      if (line === 'uciok' && !receiver) {
-        if (name) resolveHandshake();
-        else rejectHandshake(new Error('Engine supplied no UCI id name.'));
-      }
+      if (line.startsWith('id name ')) name = text(line.slice(8)).slice(0, 200);
+      const option = /^option name (.+?) type spin default (\d+) min (\d+) max (\d+)$/.exec(line);
+      if (option) options.set(option[1], { default: Number(option[2]), min: Number(option[3]), max: Number(option[4]) });
+      const variant = /^info string knightseye binary variant (baseline|avx2)$/.exec(line);
+      if (variant) binaryVariant = variant[1];
+      if (collectCompiler && line !== 'readyok' && compilerLines.join('\n').length < 1000) compilerLines.push(text(line).slice(0, 300));
+      if (waiter?.line === line) waiter.resolve();
       receiver?.(line);
     });
-    const abort = () => { rejectHandshake(abortError()); stop(); };
-    signal.addEventListener('abort', abort, { once: true });
-    const handshakeTimer = setTimeout(() => { rejectHandshake(new Error('UCI handshake timed out.')); stop(); }, handshakeTimeoutMs);
-    try {
+    function write(line) {
+      if (terminating) throw new Error('Engine process unavailable.');
+      child.stdin.write(line + '\n');
+    }
+    async function waitFor(line, commandText, signal) {
+      signal?.throwIfAborted();
+      if (waiter) throw new Error('Overlapping engine command.');
+      let timer, abort;
+      try {
+        await new Promise((resolve, reject) => {
+          waiter = { line, resolve, reject };
+          timer = setTimeout(() => reject(new Error('UCI handshake/readiness timed out.')), handshakeTimeoutMs);
+          abort = () => reject(abortError());
+          signal?.addEventListener('abort', abort, { once: true });
+          write(commandText);
+        });
+      } finally {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', abort);
+        waiter = null;
+      }
+    }
+    async function initialize(signal) {
       onSpawn?.(child);
+      await waitFor('uciok', 'uci', signal);
+      if (!name) throw new Error('Engine supplied no UCI id name.');
+      for (const [key, value] of [['Threads', threads], ['Hash', hashMb]]) {
+        const advertised = options.get(key);
+        if (!advertised) {
+          if (value !== (key === 'Threads' ? 1 : 16)) throw new Error('Engine does not advertise ' + key + '.');
+        } else {
+          if (!boundedInteger(value, advertised.min, advertised.max)) throw new Error('Unsupported engine option ' + key + '.');
+          write('setoption name ' + key + ' value ' + value);
+        }
+      }
+      collectCompiler = true;
+      write('compiler');
+      await waitFor('readyok', 'isready', signal);
+      collectCompiler = false;
+      compiler = compilerLines.length ? compilerLines.join('\n').slice(0, 1000) : null;
+      return elapsed(started);
+    }
+    return { child, options, initialize, waitFor, write, stop, childClosed,
+      get name() { return name; }, get compiler() { return compiler; }, get binaryVariant() { return binaryVariant; },
+      get terminating() { return terminating; }, set receiver(value) { receiver = value; } };
+  }
+
+  async function search(request) {
+    const signal = request.signal ? AbortSignal.any([request.signal, shutdown.signal]) : shutdown.signal;
+    if (closed || signal.aborted) throw abortError();
+    const started = performance.now();
+    const reused = !!session && !session.terminating;
+    // An idle child can fail between leases. Its stop/kill drain must complete
+    // before its replacement is acquired, just like an in-flight failure.
+    if (session?.terminating) {
+      await session.childClosed;
+      session = null;
+      if (closed || signal.aborted) throw abortError();
+    }
+    if (!reused) session = createSession();
+    const current = session;
+    let initializationMs = 0, searchStarted, nodes = null, nps = null;
+    const candidateNodes = new Map();
+    const abort = () => current.stop();
+    signal.addEventListener('abort', abort, { once: true });
+    try {
+      if (!reused) initializationMs = await current.initialize(signal);
       if (signal.aborted) throw abortError();
-      child.stdin.write('uci\n');
-      await handshake;
-      clearTimeout(handshakeTimer);
-      if (signal.aborted) throw abortError();
-      if ((request.multiPv || 1) > 1 && !hasMultiPv) throw new Error('Engine does not advertise MultiPV.');
+      if ((request.multiPv || 1) > 1 && !current.options.has('MultiPV')) throw new Error('Engine does not advertise MultiPV.');
       const adapter = createStockfishAdapter((_label, onData) => {
-        receiver = onData;
-        queueMicrotask(() => { if (!terminating) onData('frame-ready'); });
+        current.receiver = line => {
+          if (line.startsWith('info ')) {
+            const count = /\bnodes (\d+)\b/.exec(line), rate = /\bnps (\d+)\b/.exec(line);
+            if (count && Number.isSafeInteger(Number(count[1]))) nodes = Number(count[1]);
+            if (rate && Number.isSafeInteger(Number(rate[1]))) nps = Number(rate[1]);
+            if (count && line.includes(' pv ')) {
+              const index = Number(/\bmultipv (\d+)\b/.exec(line)?.[1] ?? 1);
+              const depth = Number(/\bdepth (\d+)\b/.exec(line)?.[1]);
+              if (Number.isSafeInteger(depth) && Number.isSafeInteger(Number(count[1]))) candidateNodes.set(index, { depth, nodes: Number(count[1]) });
+            }
+          }
+          onData(line);
+        };
+        queueMicrotask(() => { if (!current.terminating) onData('frame-ready'); });
         return { postMessage(commandText) {
-          if (terminating || signal.aborted) throw abortError();
-          child.stdin.write(commandText + '\n');
-        }, terminate: stop };
-      }, timeoutMs, name);
+          if (signal.aborted) throw abortError();
+          // The actual name/options handshake has already completed. The adapter
+          // still follows its usual readiness protocol for every finite search.
+          if (commandText === 'uci') queueMicrotask(() => { if (!current.terminating) onData('uciok'); });
+          else current.write(commandText);
+          if (commandText.startsWith('go ')) searchStarted = performance.now();
+        }, terminate() { /* Outer settlement owns process reuse or drain. */ } };
+      }, timeoutMs, current.name);
       const result = await adapter.search({ ...request, signal });
+      const searchElapsedMs = elapsed(searchStarted ?? started);
+      current.receiver = null;
+      // A readiness round-trip fences late info/bestmove output from the next
+      // lease, without clearing the warm transposition table.
+      await current.waitFor('readyok', 'isready', signal);
       if (signal.aborted) throw abortError();
+      for (const candidate of result.candidates) {
+        const count = candidateNodes.get(candidate.multipv);
+        candidate.nodes = count?.depth === candidate.depth ? count.nodes : null;
+      }
+      result.nodes = result.candidates[0]?.nodes ?? nodes;
+      result.diagnostics = { schema: 'native-engine-search/1', processReused: reused,
+        processInitializationMs: initializationMs, searchElapsedMs, totalElapsedMs: elapsed(started),
+        nodes, nps, threads, hashMb, compiler: current.compiler, binaryVariant: current.binaryVariant };
+      try { onSearchDiagnostics?.(result.diagnostics); } catch { /* Observers do not own result settlement. */ }
+      if (!reuseProcess) { current.stop(); await current.childClosed; session = null; }
       return result;
+    } catch (error) {
+      current.receiver = null;
+      current.stop();
+      await current.childClosed;
+      if (session === current) session = null;
+      if (signal.aborted) throw abortError();
+      throw error;
     } finally {
-      clearTimeout(handshakeTimer);
       signal.removeEventListener('abort', abort);
-      stop();
-      await childClosed;
     }
   }
 
   return {
     search(request) {
+      if (reuseProcess && busy) return Promise.reject(new Error('Engine capacity exhausted.'));
+      if (closed) return Promise.reject(abortError());
+      if (reuseProcess) busy = true;
       const pending = queue.then(() => search(request));
       queue = pending.then(() => undefined, () => undefined);
+      if (reuseProcess) pending.then(() => { busy = false; }, () => { busy = false; });
       return pending;
     },
-    async close() { closed = true; shutdown.abort(); await queue; },
+    async close() {
+      closed = true;
+      shutdown.abort();
+      await queue;
+      if (session) { session.stop(); await session.childClosed; session = null; }
+    },
   };
 }
