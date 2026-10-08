@@ -1,10 +1,12 @@
 # Independent PGN annotator preview
 
-Private standalone consumer, `0.1.0-dev.6`. It imports only installed named exports
-from `@knights-eye-chess/move-classifier@0.1.0-dev.2`, declares chess.js 1.4.0 directly,
+First-party code: **MIT**. See [LICENSING.md](LICENSING.md) for scope and third-party terms.
+
+Private standalone consumer, `0.1.0-dev.8`. It imports only installed named exports
+from `@knights-eye-chess/move-classifier@0.1.0-dev.4`, declares chess.js 1.4.0 directly,
 and owns its process transport. No application source, website routes, tree,
 widget, dataset, accounts, storage, opening database, engine binary or AI is used.
-This preview is not a registry release or a license grant.
+This MIT-licensed preview has not been released to a public registry.
 
 The installed `.` and `./engine` exports include NodeNext declarations for the
 programmatic annotation and process-engine APIs. A strict TypeScript consumer can
@@ -180,7 +182,7 @@ npm run pack:checked
 ```
 
 The source snapshot is recorded in `SOURCE-ORIGIN.json`. This private preview
-uses version `0.1.0-dev.6`; earlier artifacts remain immutable.
+uses version `0.1.0-dev.8`; earlier artifacts remain immutable.
 Internal dependencies are pinned archives in `vendor/npm`. Update an existing
 dependency with `node scripts/update-dependency.mjs @knights-eye-chess/name
 /absolute/path/package.tgz`, then run `npm ci` and `npm run check`. Review the

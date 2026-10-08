@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-08",
+  "issue": "https://github.com/knights-eye-chess/knightseye-net/issues/17",
+  "checks": {
+    "package": "@knights-eye-chess/pgn-annotator",
+    "version": "0.1.0-dev.8",
+    "codeLicense": "MIT",
+    "unchangedRuntimeAndArtworkFiles": 6,
+    "archiveSha256": "cae4a40d5dd6628826447608da228cd2c739cc1d4a0f6e0004fd6e210cb52423",
+    "licenseAndNoticeFilesPresent": true
+  },
+  "previousArtifact": "knights-eye-chess-pgn-annotator-0.1.0-dev.7.tgz",
+  "sourceCheck": "npm ci and npm run pack:checked; see issue summary for installed artifact qualification",
+  "publication": "not performed",
+  "installedConsumerTests": {
+    "name": "@knights-eye-chess/pgn-annotator",
+    "version": "0.1.0-dev.8",
+    "files": 3,
+    "passed": 25,
+    "failed": 0
+  },
+  "consumerTestHarness": "Independent npm install of six exact archives with TypeScript 5.9.3, esbuild 0.28.0 and Playwright 1.62.1; no package symlinks."
+}

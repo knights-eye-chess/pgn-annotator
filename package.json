@@ -1,6 +1,6 @@
 {
   "name": "@knights-eye-chess/pgn-annotator",
-  "version": "0.1.0-dev.7",
+  "version": "0.1.0-dev.8",
   "private": true,
   "type": "module",
   "description": "Private independent main-line PGN consumer of the analysis-core preview",
@@ -24,7 +24,12 @@
     "vendor",
     "build.mjs",
     "scripts",
-    "SOURCE-ORIGIN.json"
+    "SOURCE-ORIGIN.json",
+    "LICENSE",
+    "NOTICE",
+    "LICENSING.md",
+    "THIRD_PARTY_NOTICES.md",
+    "licenses"
   ],
   "scripts": {
     "test": "node --test tests/*.test.mjs",
@@ -34,7 +39,7 @@
     "pack:artifact": "node scripts/pack.mjs"
   },
   "dependencies": {
-    "@knights-eye-chess/move-classifier": "file:vendor/npm/knights-eye-chess-move-classifier-0.1.0-dev.3.tgz",
+    "@knights-eye-chess/move-classifier": "file:vendor/npm/knights-eye-chess-move-classifier-0.1.0-dev.4.tgz",
     "chess.js": "1.4.0",
     "@types/node": "22.19.19"
   },
@@ -44,5 +49,6 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/knights-eye-chess/pgn-annotator.git"
-  }
+  },
+  "license": "MIT"
 }
