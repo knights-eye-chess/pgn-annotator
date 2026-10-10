@@ -10,21 +10,18 @@ package does not download or bundle one.
 
 ## Get started
 
-Use Node 24 or newer and a UCI engine executable. This preview has not been
-published to npm. In checkouts of [Move Classifier](https://github.com/knights-eye-chess/move-classifier)
-and [this repository](https://github.com/knights-eye-chess/pgn-annotator), run:
+Use Node 24 or newer and a UCI engine executable. Install the published prerelease
+in your app or an empty consumer directory:
 
 ```sh
-npm ci
-npm run pack:checked
+npm install @knights-eye-chess/pgn-annotator@next
 ```
 
-Install both resulting archives together in your app or an empty consumer directory:
-
-```sh
-npm install /absolute/path/to/move-classifier/artifacts/knights-eye-chess-move-classifier-0.1.0-dev.6.tgz \
-  /absolute/path/to/pgn-annotator/artifacts/knights-eye-chess-pgn-annotator-0.1.0-dev.11.tgz
-```
+Its exact classifier and chess.js dependencies install automatically. The first
+reviewed registry release is `0.1.0-dev.13`; pin that exact version for
+reproducibility. For source development, use `npm ci` and
+`npm run pack:checked` in this checkout. Historical archive provenance is in
+[SOURCE-ORIGIN.json](SOURCE-ORIGIN.json).
 
 Annotate a game using `stockfish` on your PATH:
 
@@ -110,7 +107,7 @@ npm run pack:checked
 ```
 
 The source and tests live here; [SOURCE-ORIGIN.json](SOURCE-ORIGIN.json) records
-the historical extraction. Sibling build dependencies are pinned local archives.
+the historical extraction. Sibling build dependencies use exact npm versions and the lockfile.
 
 See [npm publishing](NPM-PUBLISHING.md) for release preparation.
 
