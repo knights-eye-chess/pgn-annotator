@@ -43,7 +43,7 @@
     "publish:prepare": "npm run pack:checked && npm run publish:verify"
   },
   "dependencies": {
-    "@knights-eye-chess/move-classifier": "file:vendor/npm/knights-eye-chess-move-classifier-0.1.0-dev.8.tgz",
+    "@knights-eye-chess/move-classifier": "0.1.0-dev.10",
     "chess.js": "1.4.0",
     "@types/node": "22.19.19"
   },
