@@ -2,12 +2,12 @@
   "schema": "knights-eye-npm-preparation/1",
   "candidate": {
     "name": "@knights-eye-chess/pgn-annotator",
-    "version": "0.1.0-dev.9",
-    "archive": "artifacts/knights-eye-chess-pgn-annotator-0.1.0-dev.9.tgz",
-    "bytes": 27009,
-    "sha256": "69f45a9c1125b4a72902525101b854524527b9329b2ce3a2cce09bfce28431bb",
+    "version": "0.1.0-dev.10",
+    "archive": "artifacts/knights-eye-chess-pgn-annotator-0.1.0-dev.10.tgz",
+    "bytes": 27031,
+    "sha256": "d3cc28c4c5788309ad042dfe3aafb4a7bf25fe35b5d090c02a56d0960a191763",
     "dependencies": {
-      "@knights-eye-chess/move-classifier": "0.1.0-dev.5",
+      "@knights-eye-chess/move-classifier": "0.1.0-dev.6",
       "chess.js": "1.4.0",
       "@types/node": "22.19.19"
     },
@@ -15,20 +15,63 @@
     "privateTarball": false
   },
   "checks": {
-    "sourceAndInstalledTests": 129,
+    "metadataOnlyChangesVerified": true,
+    "nonmetadataArchiveEntriesByteIdentical": true,
+    "npmPublishDryRun": true,
+    "sourceAndInstalledTests": "not run for this candidate",
     "publicEsmImports": 19,
     "cliHelpCommands": 2,
     "strictNodeNextTypes": true,
-    "browserConsumer": "Chromium: board mount, tree PGN import, supplied-evidence classifier",
-    "npmPublishDryRun": true,
+    "browserConsumer": "not run for this candidate",
     "combinedSixArchiveInstall": true,
-    "historicalArchivesUnchanged": 62,
-    "immutableCollisionRejected": true
+    "historicalArchivesUnchanged": 54
   },
   "registryPublicationPerformed": false,
   "visibilityChanged": false,
   "limitations": [
     "No live model quality or engine performance claim",
     "Owner npm account/scope authority and publication authorization required"
-  ]
+  ],
+  "priorCandidateEvidence": {
+    "candidate": {
+      "name": "@knights-eye-chess/pgn-annotator",
+      "version": "0.1.0-dev.9",
+      "archive": "artifacts/knights-eye-chess-pgn-annotator-0.1.0-dev.9.tgz",
+      "bytes": 27009,
+      "sha256": "69f45a9c1125b4a72902525101b854524527b9329b2ce3a2cce09bfce28431bb",
+      "dependencies": {
+        "@knights-eye-chess/move-classifier": "0.1.0-dev.5",
+        "chess.js": "1.4.0",
+        "@types/node": "22.19.19"
+      },
+      "privateSource": true,
+      "privateTarball": false
+    },
+    "checks": {
+      "sourceAndInstalledTests": 129,
+      "publicEsmImports": 19,
+      "cliHelpCommands": 2,
+      "strictNodeNextTypes": true,
+      "browserConsumer": "Chromium: board mount, tree PGN import, supplied-evidence classifier",
+      "npmPublishDryRun": true,
+      "combinedSixArchiveInstall": true,
+      "historicalArchivesUnchanged": 62,
+      "immutableCollisionRejected": true
+    },
+    "note": "These checks were run on the prior candidate. All nonmetadata archive entries in the prior and current candidate are byte-identical; the current candidate does not claim those checks were rerun."
+  },
+  "metadataComparison": {
+    "repository": "pgn-annotator",
+    "priorVersion": "0.1.0-dev.9",
+    "newVersion": "0.1.0-dev.10",
+    "changedArchiveEntries": [
+      "package/npm-release.json",
+      "package/package.json",
+      "package/SOURCE-ORIGIN.json",
+      "package/NPM-PUBLISHING.md",
+      "package/README.md"
+    ],
+    "unchangedEntries": 23,
+    "sourceRuntimeTypesAssetsByteIdentical": true
+  }
 }

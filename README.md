@@ -22,8 +22,8 @@ npm run pack:checked
 Install both resulting archives together in your app or an empty consumer directory:
 
 ```sh
-npm install /absolute/path/to/move-classifier/artifacts/knights-eye-chess-move-classifier-0.1.0-dev.5.tgz \
-  /absolute/path/to/pgn-annotator/artifacts/knights-eye-chess-pgn-annotator-0.1.0-dev.9.tgz
+npm install /absolute/path/to/move-classifier/artifacts/knights-eye-chess-move-classifier-0.1.0-dev.6.tgz \
+  /absolute/path/to/pgn-annotator/artifacts/knights-eye-chess-pgn-annotator-0.1.0-dev.11.tgz
 ```
 
 Annotate a game using `stockfish` on your PATH:
