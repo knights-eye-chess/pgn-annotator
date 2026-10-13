@@ -1,6 +1,6 @@
 {
   "name": "@knights-eye-chess/pgn-annotator",
-  "version": "0.1.0-dev.16",
+  "version": "0.1.0-dev.17-board-offers.1",
   "private": true,
   "type": "module",
   "description": "Private independent main-line PGN consumer of the analysis-core preview",
@@ -43,7 +43,7 @@
     "publish:prepare": "npm run pack:checked && npm run publish:verify"
   },
   "dependencies": {
-    "@knights-eye-chess/move-classifier": "0.1.0-dev.13",
+    "@knights-eye-chess/move-classifier": "file:vendor/npm/knights-eye-chess-move-classifier-0.1.0-dev.14-board-offers.3.tgz",
     "chess.js": "1.4.0",
     "@types/node": "22.19.19"
   },
