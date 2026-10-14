@@ -2,9 +2,10 @@
 
 The owner authorized public npm prereleases on 10 October 2026. Use **`next`** and preserve any existing `latest` tag. Licensing is documented in [LICENSING.md](LICENSING.md).
 
-The first registry prerelease is `0.1.0-dev.13`. The source checkout now prepares
-`0.1.0-dev.16` with Move Classifier `0.1.0-dev.13`.
-This next candidate has not been published; `@next` remains the verified registry release.
+The first registry prerelease was `0.1.0-dev.13`. The last prepared local
+compatibility archive is `0.1.0-dev.17` with Move Classifier `0.1.0-dev.14`.
+Check the registry before relying on the `next` tag. No dependency-only
+successor is planned.
 
 ## Prepare the exact candidate
 
@@ -15,9 +16,9 @@ npm ci
 npm run publish:prepare
 ```
 
-Review `artifacts/knights-eye-chess-pgn-annotator-0.1.0-dev.16.tgz`, including its files, exports, declarations, licenses and exact registry dependencies. Reusable source and offline owner tests are intentional; application traces, credentials, vendor archives and source lockfiles are excluded. The checkout stays `private: true`; publish only the staged archive. Archive contents are immutable: use a new version for changed bytes.
+Review `artifacts/knights-eye-chess-pgn-annotator-0.1.0-dev.17.tgz`, including its files, exports, declarations, licenses and exact registry dependencies. Reusable source and offline owner tests are intentional; application traces, credentials, vendor archives and source lockfiles are excluded. The checkout stays `private: true`; publish only the staged archive. Archive contents are immutable: use a new version for changed bytes.
 
-Before every coordinated release, run `node tools/release-tooling/sync.mjs --check` in the reviewed app checkout alongside all six component revisions. Record those commits and the result.
+Before every coordinated release, run `node tools/release-tooling/sync.mjs --check` in the reviewed app checkout against its current component registry. Record the app and component commits and the result.
 
 ## Publish through GitHub Actions
 
@@ -26,3 +27,17 @@ Manually dispatch **Publish reviewed npm candidate** on `dev` with the exact ver
 Release Board UI, Game Tree and Move Classifier first; AI Analysis and PGN Annotator after Classifier; CLI Tools after its dependencies. Bootstrap source checkouts temporarily retain qualified local inputs until the sibling versions exist; staged consumer manifests already use exact npmjs versions. After registry integrity is verified, switch source manifests and locks to the registry and qualify clean installs.
 
 Verify public imports, types and consumer examples after publication. No engine executable, provider credential, live AI answer or support guarantee is included. Automatic publication and future trusted-publisher configuration remain separate changes.
+
+## npm removal after verified application cutover
+
+The owner superseded the earlier final compatibility release and deprecation
+plan. Delete the PGN Annotator npm package only after the split app is deployed
+and tested without it, the public examples replacement is verified, CLI Tools
+has been removed from npm, and npm's unpublish policy permits removal. Keep
+this GitHub repository and historical archives.
+
+The read-only eligibility findings, official npm policy link and manual
+workflow instructions are in [CLI Tools' npm retirement plan](https://github.com/knights-eye-chess/cli-tools/blob/dev/docs/npm-retirement/PLAN.md).
+The workflow is manual-only and must not be dispatched before the verified app
+cutover and CLI Tools removal. No unpublish or deprecation command is part of
+this preparation.

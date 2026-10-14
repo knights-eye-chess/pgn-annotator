@@ -8,6 +8,41 @@ Use it to review games from the command line, prepare annotated game exports or
 add analysis to your own Node app. Bring a UCI engine such as Stockfish; the
 package does not download or bundle one.
 
+## Retirement after the application split
+
+The annotation command and its PGN composition are moving to the separate
+[composition examples](https://github.com/knights-eye-chess/composition-examples)
+repository. Existing `@knights-eye-chess/pgn-annotator` prereleases and their
+`knights-eye-annotate`, root annotation API and `/engine` entry point remain
+available until npm permits their removal. The owner asked to delete the npm
+package after the app split is deployed and tested; no further compatibility
+release or npm deprecation is planned. The source repository and historical
+archives remain.
+
+Run the replacement annotation tool from a pinned examples checkout:
+
+```sh
+git clone https://github.com/knights-eye-chess/composition-examples.git
+EXAMPLES_COMMIT='<reviewed-public-commit-sha>'
+git -C composition-examples checkout --detach "$EXAMPLES_COMMIT"
+cd composition-examples
+node scripts/install-candidates.mjs /path/to/classifier.tgz /path/to/ai-analysis.tgz /path/to/uci-client.tgz
+node annotation/cli.mjs --help
+```
+
+The candidate installer is needed until the final component versions are
+published and the examples lockfile is updated; then a clean `npm ci` can replace
+it. Follow the examples README for the reviewed archive coordinates.
+
+Replace `--help` with the same `--input`, `--output`, `--format`, `--depth`,
+`--engine` and `--records` options shown below. The example's
+`annotation/annotate.mjs` supplies `annotatePgn`, `renderAnnotatedPgn` and
+`renderJsonl`; `scripts/classifier-engine.mjs` adapts the public
+`@knights-eye-chess/uci-client/node` process client to the injected
+`@knights-eye-chess/move-classifier/core` search interface. Pin a reviewed
+checkout commit because the examples are not an npm library. The npm removal
+gates are in [npm publishing](NPM-PUBLISHING.md).
+
 ## Get started
 
 Use Node 24 or newer and a UCI engine executable. Install the published prerelease
