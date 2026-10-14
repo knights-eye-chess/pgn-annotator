@@ -36,8 +36,8 @@ and tested without it, the public examples replacement is verified, CLI Tools
 has been removed from npm, and npm's unpublish policy permits removal. Keep
 this GitHub repository and historical archives.
 
-The read-only eligibility findings, official npm policy link and a **non-active**
-manual workflow draft are in [CLI Tools' npm retirement plan](https://github.com/knights-eye-chess/cli-tools/blob/dev/docs/npm-retirement/PLAN.md).
-That workflow must receive exact-head review, the root's cutover approval and
-a required-reviewer GitHub environment before activation. No unpublish or
-deprecation command is part of this preparation.
+The read-only eligibility findings, official npm policy link and manual
+workflow instructions are in [CLI Tools' npm retirement plan](https://github.com/knights-eye-chess/cli-tools/blob/dev/docs/npm-retirement/PLAN.md).
+The workflow is manual-only and must not be dispatched before the verified app
+cutover and CLI Tools removal. No unpublish or deprecation command is part of
+this preparation.
